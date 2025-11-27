@@ -5,3 +5,4 @@ numpy
 opencv-python-headless
 Pillow
 gdown
+python-multipart==0.0.6
