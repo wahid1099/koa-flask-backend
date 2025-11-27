@@ -1,90 +1,34 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Knee OA Classifier</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        padding: 20px;
-      }
-      .container {
-        max-width: 600px;
-        margin: auto;
-      }
-      img {
-        max-width: 100%;
-        margin-top: 10px;
-      }
-      .results {
-        margin-top: 20px;
-      }
-    </style>
   </head>
   <body>
-    <div class="container">
-      <h1>Knee Osteoarthritis Classifier</h1>
-      <p>
-        Upload a knee X-ray (png/jpg) to predict KL grade and see Grad-CAM
-        overlay.
-      </p>
-
-      <input type="file" id="fileInput" accept="image/png, image/jpeg" />
-      <button onclick="uploadFile()">Predict</button>
-
-      <div class="results" id="results"></div>
-    </div>
+    <h1>Knee Osteoarthritis Classifier</h1>
+    <input type="file" id="imageInput" />
+    <button onclick="uploadImage()">Predict</button>
+    <pre id="result"></pre>
 
     <script>
-      async function uploadFile() {
-        const fileInput = document.getElementById("fileInput");
-        const resultsDiv = document.getElementById("results");
-        resultsDiv.innerHTML = "Uploading and predicting...";
-
-        if (!fileInput.files.length) {
-          resultsDiv.innerHTML = "Please select an image first.";
+      async function uploadImage() {
+        const fileInput = document.getElementById("imageInput");
+        if (fileInput.files.length == 0) {
+          alert("Select an image!");
           return;
         }
-
-        const file = fileInput.files[0];
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", fileInput.files[0]);
 
-        try {
-          const response = await fetch("http://localhost:8000/predict", {
-            method: "POST",
-            body: formData,
-          });
-          const data = await response.json();
-
-          if (data.error) {
-            resultsDiv.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
-            return;
-          }
-
-          // Display predictions
-          let html = `<h2>Prediction</h2>`;
-          html += `<p><b>KL Grade:</b> ${data.predicted_class}</p>`;
-          html += `<p><b>Confidence:</b> ${(data.confidence * 100).toFixed(
-            2
-          )}%</p>`;
-          html += `<h3>Top probabilities:</h3><ul>`;
-          for (const cls in data.top_probs) {
-            html += `<li>${cls}: ${(data.top_probs[cls] * 100).toFixed(
-              2
-            )}%</li>`;
-          }
-          html += `</ul>`;
-
-          // Display Grad-CAM overlay
-          html += `<h3>Grad-CAM Overlay:</h3>`;
-          html += `<img src="data:image/png;base64,${data.gradcam_base64}" alt="Grad-CAM Overlay">`;
-
-          resultsDiv.innerHTML = html;
-        } catch (err) {
-          resultsDiv.innerHTML = `<p style="color:red;">Error: ${err}</p>`;
-        }
+        const response = await fetch("/predict", {
+          method: "POST",
+          body: formData,
+        });
+        const result = await response.json();
+        document.getElementById("result").innerText = JSON.stringify(
+          result,
+          null,
+          2
+        );
       }
     </script>
   </body>
