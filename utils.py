@@ -13,7 +13,7 @@ from io import BytesIO
 CLASS_NAMES = ['KL-0', 'KL-1', 'KL-2', 'KL-3', 'KL-4']
 IMG_SIZE = (224, 224)
 
-def load_keras_model_from_drive(file_id: str, local_path="koa_model.h5"):
+def load_keras_model_from_drive(file_id: str, local_path="koa_enhanced_model.h5"):
     """Download model from Google Drive and load it."""
     if not os.path.exists(local_path):
         url = f"https://drive.google.com/uc?id={file_id}"

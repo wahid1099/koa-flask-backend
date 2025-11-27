@@ -1,15 +1,17 @@
 # Implementation Plan
 
-- [ ] 1. Set up CSS theme system with custom properties
+- [x] 1. Set up CSS theme system with custom properties
 
   - Create CSS variables for light and dark themes (colors, backgrounds, text)
   - Define theme-specific styles using data-theme attribute selector
   - Ensure smooth transitions between theme changes
   - _Requirements: 1.3, 2.4, 3.3_
 
-- [ ] 2. Implement theme toggle functionality
+-
 
-  - [ ] 2.1 Create theme toggle button in HTML with icon/text indicator
+- [x] 2. Implement theme toggle functionality
+
+  - [x] 2.1 Create theme toggle button in HTML with icon/text indicator
 
     - Add button element to the UI in a visible location
     - Include visual indicators (moon/sun icons or text)
@@ -23,7 +25,7 @@
     - Write `saveTheme(themeName)` to persist to localStorage
     - _Requirements: 1.2, 1.4, 1.5_
 
-  - [ ] 2.3 Write property test for theme toggle state switching
+  - [x] 2.3 Write property test for theme toggle state switching
 
     - **Property 1: Theme toggle switches state**
     - **Validates: Requirements 1.2**
@@ -34,6 +36,7 @@
     - **Validates: Requirements 1.4, 1.5**
 
   - [ ] 2.5 Write unit tests for theme toggle edge cases
+
     - Test default theme when localStorage is empty
     - Test invalid theme values default to light theme
     - Test theme toggle with both initial states
@@ -62,7 +65,7 @@
     - Make profile section responsive for different screen sizes
     - _Requirements: 2.4_
 
-  - [ ] 3.4 Write property test for profile section theme matching
+- - [ ] 3.4 Write property test for profile section theme matching
 
     - **Property 4: Developer profile styling matches theme**
     - **Validates: Requirements 2.4**

@@ -4,8 +4,126 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Knee OA Classifier</title>
+    <style>
+      /* CSS Custom Properties for Light Theme (Default) */
+      :root {
+        --bg-color: #ffffff;
+        --text-color: #333333;
+        --heading-color: #1a1a1a;
+        --button-bg: #007bff;
+        --button-text: #ffffff;
+        --button-hover-bg: #0056b3;
+        --input-bg: #ffffff;
+        --input-border: #cccccc;
+        --input-text: #333333;
+        --result-bg: #f8f9fa;
+        --result-border: #dee2e6;
+        --error-color: #dc3545;
+        --success-color: #28a745;
+      }
+
+      /* CSS Custom Properties for Dark Theme */
+      [data-theme="dark"] {
+        --bg-color: #1a1a1a;
+        --text-color: #e0e0e0;
+        --heading-color: #ffffff;
+        --button-bg: #0056b3;
+        --button-text: #ffffff;
+        --button-hover-bg: #003d82;
+        --input-bg: #2d2d2d;
+        --input-border: #444444;
+        --input-text: #e0e0e0;
+        --result-bg: #2d2d2d;
+        --result-border: #444444;
+        --error-color: #ff6b6b;
+        --success-color: #51cf66;
+      }
+
+      /* Apply theme variables to elements */
+      * {
+        transition: background-color 0.3s ease, color 0.3s ease,
+          border-color 0.3s ease;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        margin: 0;
+      }
+
+      h2 {
+        color: var(--heading-color);
+      }
+
+      button {
+        background-color: var(--button-bg);
+        color: var(--button-text);
+        border: none;
+        padding: 10px 20px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 16px;
+      }
+
+      button:hover {
+        background-color: var(--button-hover-bg);
+      }
+
+      input[type="file"] {
+        background-color: var(--input-bg);
+        color: var(--input-text);
+        border: 1px solid var(--input-border);
+        padding: 8px;
+        border-radius: 4px;
+        margin-right: 10px;
+      }
+
+      #result {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: var(--result-bg);
+        border: 1px solid var(--result-border);
+        border-radius: 4px;
+      }
+
+      #result p {
+        margin: 10px 0;
+      }
+
+      #result img {
+        margin-top: 10px;
+        border-radius: 4px;
+      }
+
+      #themeToggle {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      #themeToggle:focus {
+        outline: 2px solid var(--button-bg);
+        outline-offset: 2px;
+      }
+
+      #themeIcon {
+        font-size: 18px;
+      }
+    </style>
   </head>
   <body>
+    <button id="themeToggle" aria-label="Toggle theme">
+      <span id="themeIcon">🌙</span>
+      <span id="themeText">Dark Mode</span>
+    </button>
     <h2>Knee Osteoarthritis Classifier</h2>
     <form id="uploadForm">
       <input type="file" id="imageFile" name="file" accept="image/*" required />
@@ -13,6 +131,53 @@
     </form>
     <div id="result"></div>
     <script>
+      // Theme Manager Functions
+      const THEME_STORAGE_KEY = "knee-oa-theme";
+
+      function saveTheme(themeName) {
+        localStorage.setItem(THEME_STORAGE_KEY, themeName);
+      }
+
+      function applyTheme(themeName) {
+        document.documentElement.setAttribute("data-theme", themeName);
+        const themeIcon = document.getElementById("themeIcon");
+        const themeText = document.getElementById("themeText");
+
+        if (themeName === "dark") {
+          themeIcon.textContent = "☀️";
+          themeText.textContent = "Light Mode";
+        } else {
+          themeIcon.textContent = "🌙";
+          themeText.textContent = "Dark Mode";
+        }
+      }
+
+      function toggleTheme() {
+        const currentTheme =
+          document.documentElement.getAttribute("data-theme") || "light";
+        const newTheme = currentTheme === "light" ? "dark" : "light";
+        applyTheme(newTheme);
+        saveTheme(newTheme);
+      }
+
+      function initTheme() {
+        const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+        const theme =
+          savedTheme && (savedTheme === "light" || savedTheme === "dark")
+            ? savedTheme
+            : "light";
+        applyTheme(theme);
+      }
+
+      // Initialize theme on page load
+      initTheme();
+
+      // Add event listener to theme toggle button
+      document
+        .getElementById("themeToggle")
+        .addEventListener("click", toggleTheme);
+
+      // Form submission handler
       const form = document.getElementById("uploadForm");
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
