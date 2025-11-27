@@ -2,44 +2,36 @@ import os
 import gdown
 import numpy as np
 import cv2
+import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.layers import DepthwiseConv2D
+from tensorflow.keras.applications import efficientnet
+from PIL import Image
 import base64
 from io import BytesIO
-from PIL import Image
-from tensorflow.keras.applications import efficientnet
 
 CLASS_NAMES = ['KL-0', 'KL-1', 'KL-2', 'KL-3', 'KL-4']
 IMG_SIZE = (224, 224)
 
-# -------------------
-# Load model from Google Drive
-# -------------------
 def load_keras_model_from_drive(file_id: str, local_path="koa_model.h5"):
+    """Download model from Google Drive and load it."""
     if not os.path.exists(local_path):
         url = f"https://drive.google.com/uc?id={file_id}"
         gdown.download(url, local_path, quiet=False, fuzzy=True)
 
-    # Patch DepthwiseConv2D for older TF compatibility
+    # Patch DepthwiseConv2D for old TF compatibility
     orig_init = DepthwiseConv2D.__init__
     def patched_init(self, *args, **kwargs):
-        if "groups" in kwargs:
-            kwargs.pop("groups")
+        if "groups" in kwargs: kwargs.pop("groups")
         return orig_init(self, *args, **kwargs)
     DepthwiseConv2D.__init__ = patched_init
 
     model = load_model(local_path, compile=False)
     return model
 
-# -------------------
-# Preprocess image array
-# -------------------
 def preprocess_array_image(img_array, target_size=IMG_SIZE):
-    if img_array.dtype != np.uint8:
-        img = (img_array * 255).astype(np.uint8)
-    else:
-        img = img_array.copy()
-
+    """Preprocess for EfficientNet (CLAHE + denoise + resize)."""
+    img = (img_array * 255).astype(np.uint8) if img_array.dtype != np.uint8 else img_array.copy()
     if img.shape[-1] == 3:
         img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     else:
@@ -49,20 +41,15 @@ def preprocess_array_image(img_array, target_size=IMG_SIZE):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     eq = clahe.apply(gray)
     eq_bgr = cv2.cvtColor(eq, cv2.COLOR_GRAY2BGR)
-
     den = cv2.bilateralFilter(eq_bgr, d=9, sigmaColor=75, sigmaSpace=75)
     resized = cv2.resize(den, target_size, interpolation=cv2.INTER_LANCZOS4)
     rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB).astype(np.float32)
     rgb = efficientnet.preprocess_input(rgb)
     return rgb
 
-# -------------------
-# Grad-CAM
-# -------------------
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name=None, pred_index=None):
-    import tensorflow as tf
-
     if last_conv_layer_name is None:
+        # Find last conv layer
         for layer in reversed(model.layers):
             if isinstance(layer, tf.keras.layers.Conv2D):
                 last_conv_layer_name = layer.name
@@ -76,11 +63,8 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name=None, pred_index
     )
 
     img_batch = np.expand_dims(img_array, axis=0)
-
     with tf.GradientTape() as tape:
         conv_outputs, predictions = grad_model(img_batch)
-        if isinstance(predictions, (list, tuple)):
-            predictions = predictions[0]
         if pred_index is None:
             pred_index = tf.argmax(predictions[0])
         class_channel = predictions[:, pred_index]
@@ -95,20 +79,11 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name=None, pred_index
 
     heatmap = tf.nn.relu(heatmap)
     max_val = tf.reduce_max(heatmap)
-    if max_val == 0 or tf.math.is_nan(max_val):
-        return np.zeros((int(heatmap.shape[0]), int(heatmap.shape[1])))
-    heatmap /= max_val
+    heatmap /= max_val + 1e-10
     return heatmap.numpy()
 
-# -------------------
-# Overlay heatmap on image
-# -------------------
 def overlay_heatmap_on_image(orig_rgb, heatmap, alpha=0.4):
-    if orig_rgb.dtype != np.uint8:
-        img = np.clip(orig_rgb * 255, 0, 255).astype(np.uint8)
-    else:
-        img = orig_rgb.copy()
-
+    img = np.clip(orig_rgb * 255, 0, 255).astype(np.uint8) if orig_rgb.dtype != np.uint8 else orig_rgb.copy()
     h, w = img.shape[:2]
     heatmap_resized = cv2.resize(heatmap, (w, h))
     heatmap_uint8 = np.uint8(255 * heatmap_resized)
@@ -117,22 +92,14 @@ def overlay_heatmap_on_image(orig_rgb, heatmap, alpha=0.4):
     overlay = cv2.addWeighted(img, 1 - alpha, heatmap_color, alpha, 0)
     return overlay
 
-# -------------------
-# Convert numpy image to base64
-# -------------------
 def pil_to_base64(img_array):
     img = Image.fromarray(img_array.astype(np.uint8))
     buffer = BytesIO()
     img.save(buffer, format="PNG")
     return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-# -------------------
-# Prediction function
-# -------------------
 def predict(model, img_array):
-    pre = img_array
-    if len(pre.shape) == 3:
-        pre = np.expand_dims(pre, axis=0)
+    pre = np.expand_dims(img_array, axis=0) if len(img_array.shape) == 3 else img_array
     probs = model.predict(pre)[0]
     pred_class = int(np.argmax(probs))
     result = {
@@ -140,8 +107,6 @@ def predict(model, img_array):
         "confidence": float(probs[pred_class]),
         "top_probs": {CLASS_NAMES[i]: float(probs[i]) for i in range(len(CLASS_NAMES))}
     }
-
-    # Grad-CAM overlay
     heatmap = make_gradcam_heatmap(np.squeeze(pre), model)
     overlay = overlay_heatmap_on_image(np.squeeze(pre), heatmap, alpha=0.4)
     result["gradcam_base64"] = pil_to_base64(overlay)

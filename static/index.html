@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Knee OA Classifier</title>
+  </head>
+  <body>
+    <h2>Knee Osteoarthritis Classifier</h2>
+    <form id="uploadForm">
+      <input type="file" id="imageFile" name="file" accept="image/*" required />
+      <button type="submit">Predict</button>
+    </form>
+    <div id="result"></div>
+    <script>
+      const form = document.getElementById("uploadForm");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fileInput = document.getElementById("imageFile");
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        const res = await fetch("/predict", { method: "POST", body: formData });
+        const data = await res.json();
+
+        if (data.error) {
+          document.getElementById(
+            "result"
+          ).innerHTML = `<p style="color:red">${data.error}</p>`;
+        } else {
+          document.getElementById("result").innerHTML = `
+      <p>Predicted Class: ${
+        data.predicted_class
+      } (Confidence: ${data.confidence.toFixed(2)})</p>
+      <img src="data:image/png;base64,${data.gradcam_base64}" width="400">
+    `;
+        }
+      });
+    </script>
+  </body>
+</html>
